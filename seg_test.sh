@@ -39,69 +39,12 @@ readonly CB_CYN="$(tput $tty setab 6)"
 readonly CB_WHT="$(tput $tty setab 7)"
 readonly CB_GRA="$(tput $tty setab 8)"
 
-readonly CB_FAILURE=$CB_RED
-readonly CB_SUCCESS=$CB_MAG
+readonly CB_FAILURE=CB_RED
+readonly CB_SUCCESS=CB_MAG
 
 readonly C_RESET="$(tput $tty sgr0)"
 
-#
-# Segments
-#
-seg_username() {
-    echo "$USER"
-}
-
-seg_hostname() {
-    echo hostname
-}
-
-seg_git() {
-    if [ -f /usr/bin/git ]; then
-        source ~/.git-prompt.sh
-        echo $(__git_ps1)
-    else
-        echo ''
-    fi
-}
-
-seg_dir() {
-
-    local dir="$PWD"
-    local out=''
-
-    [[ "$dir" =~ ^"$HOME"(/|$) ]] && dir="${dir/#$HOME/\~}"
-    IFS="/" dir_array=($dir)
-
-    out+="\[$CF_BLK$CF_WHT\]"
-    out+=" $(str_join " \[$CF_GRA\]"$'\uE0B1'"\[$CF_BLK\] " "${dir_array[@]}") "
-
-    echo "$out"
-}
-
-seg_retval() {
-    ret=$1
-
-    local state_bg
-    local state_fg
-    local out=''
-
-    if [ "$ret" -eq 0 ]; then
-        state_fg="$CF_SUCCESS"
-        state_bg="$CB_SUCCESS"
-    else
-        state_fg="$CF_FAILURE"
-        state_bg="$CB_FAILURE"
-    fi
-
-    out+="\[$CF_WHT$state_bg\]"$'\uE0B0'"\[$CF_BLK\]"
-    out+=" $ "
-    out+="\[$C_RESET$state_fg\]"$'\uE0B0'
-
-    echo "$out"
-}
-
-
-str_join() {
+__join() {
     local sep="$1"
     shift
     local len=$#
@@ -112,36 +55,35 @@ str_join() {
     done
 }
 
-#
-# Build final prompt string and echo it
-#
-build_ps1() {
+seg_dir() {
 
-    local readonly return_code=$?
+    local ret=$?
+    local state_bg
+    local state_fg
+    if [ $ret -eq 0 ]; then
+        state_fg="$CF_SUCCESS"
+        state_bg="$CB_SUCCESS"
+    else
+        state_fg="$CF_FAILURE"
+        state_bg="$CB_FAILURE"
+    fi
 
-    local out="\n"
-    local user=$(seg_username)
-    local host=$(seg_hostname)
-    local dir=$(seg_dir)
-    local git=$(seg_git)
-    local retval=$(seg_retval $return_code)
+    local dir="$PWD"
+    [[ "$dir" =~ ^"$HOME"(/|$) ]] && dir="${dir/#$HOME/\~}"
+    IFS="/" dir_array=($dir)
+    echo "$dir_array"
 
-    local seg_user="$user"
-    seg_user+='@'
-    seg_user+="$host"
-
-    out+="\[$CF_WHT$CB_GRA\]"
-    out+=$(str_join " \[$CF_GRA\]"$'\uE0B1'"\[$CF_BLK\] " "$seg_user")
-    out+=$(str_join " \[$CF_GRA\]"$'\uE0B1'"\[$CF_BLK\] " "$dir")
-    out+=$(str_join " \[$CF_GRA\]"$'\uE0B1'"\[$CF_BLK\] " "$git")
-    out+=$(str_join " \[$CF_GRA\]"$'\uE0B1'"\[$CF_BLK\] " "$retval")
+    out=''
+    out+="\[$CF_BLK$CB_WHT\]"
+    out+=" $(__join " \[$CF_GRA\]"$'\uE0B1'"\[$CF_BLK\] " "${dir_array[@]}") "
+    out+="\[$CF_WHT$state_bg\]"$'\uE0B0'"\[$CF_BLK\]"
+    out+=" $ "
+    out+="\[$C_RESET$state_fg\]"$'\uE0B0'
     out+="\[$C_RESET\] "
 
     echo "$out"
 }
-# PROMPT_COMMAND=__ps1
 
-#
-# Echo out final string
-#
-build_ps1
+__pwd=$(seg_dir)
+echo $__pwd
+# IFS="-" echo "${__pwd[*]}"
